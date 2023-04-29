@@ -1,3 +1,5 @@
+import { log } from 'console';
+import { Division } from '../models/divisions';
 import { responseWrapper, responseValue, Mp } from '../models/mps';
 import neo4j from "neo4j-driver";
 
@@ -11,16 +13,17 @@ export const setupNeo = async () => {
 
     try {
         let result;
+        result = await session.run(`MATCH (n) DELETE (n)`);
+        result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
         result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);        
-        result = await session.run(`MATCH (n) DELETE (n)`);        
     } catch (error) {
         //contraint already exists so proceed
     }
 }
 
-export const createNeoData = async (mp: Mp) => {
+export const createMpNode = async (mp: Mp) => {
 
-    const cypher =
+    const cypher: string =
         `CREATE (mp:Mp {
         id: ${mp.id},
         nameListAs: "${mp.nameListAs}",
@@ -41,8 +44,35 @@ export const createNeoData = async (mp: Mp) => {
     try {
         const session = driver.session();
         const result = await session.run(cypher);
-        console.log('created ', result);
+        // console.log('created ', result);
+
+    } catch (error: any) {
+        if (error.code !== "Neo.ClientError.Schema.ConstraintValidationFailed") {
+            console.log('Error adding Club: ', error);
+        }
+    }
+
+}
+
+export const createDivisionNode = async (division: Division) => {
+    
+    const cypher: string = `CREATE (division:Division {
+        DivisionId: ${division.DivisionId},
+        Date: "${division.Date}",
+        PublicationUpdated: "${division.PublicationUpdated}",
+        Number: ${division.Number},
+        IsDeferred: ${division.IsDeferred},
+        EVELType: "${division.EVELType}",
+        EVELCountry: "${division.EVELCountry}",
+        Title: "${division.Title}",
+        AyeCount: ${division.AyeCount},
+        NoCount: ${division.NoCount}
+        })`;
         
+    try {
+        const session = driver.session();
+        const result = await session.run(cypher);        
+
     } catch (error: any) {
         if (error.code !== "Neo.ClientError.Schema.ConstraintValidationFailed") {
             console.log('Error adding Club: ', error);
