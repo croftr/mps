@@ -1,4 +1,5 @@
 export interface VotedFor {
     mpId: number,
-    divisionId: number
+    divisionId: number,
+    votedAye: boolean
 }

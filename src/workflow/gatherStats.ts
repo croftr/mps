@@ -1,13 +1,9 @@
 import { log } from "console";
-import { getMps, getDivision, getMemebersDivisions, getAllDivisions } from "./apicall"
+import { getMps, getDivision, getMemebersDivisions, getAllDivisions, getMemeberVoting } from "./apicall"
 import { createMpNode, createDivisionNode, setupNeo, createVotedForDivision } from "./neoManager";
 import { Mp } from "../models/mps";
-import { Division } from "../models/divisions";
+import { Division, MemberVoting } from "../models/divisions";
 import { VotedFor } from "../models/relationships";
-
-function delay(time: number) {
-    return new Promise(resolve => setTimeout(resolve, time));
-}
 
 const CREATE_MPS = true;
 const CREATE_DIVISIONS = true;
@@ -75,7 +71,7 @@ export const gatherStats = async () => {
     
     skip = 0;
     if (CREATE_RELATIONSHIPS) {
-        // const mpsVotes = [];
+        
         //make relationships between mps and divisions
         for (const mp of allMps) {                        
             let divisionsVotedCount: number = 25;
@@ -84,19 +80,20 @@ export const gatherStats = async () => {
         
             while (divisionsVotedCount === 25) {                
                 //for each mp get all the divisions they have voted on
-                const votedForDivisions: Array<Division> = await getMemebersDivisions(skip, 25, mp.id);                                
+                const memeberVotings: Array<MemberVoting> = await getMemeberVoting(skip, 25, mp.id);                                
                 skip += 25;
                 
                 //only create releationships for voted for divisions if we have created the division
-                votedForDivisions.filter(i => allDivisions.find(division => division.DivisionId === i.DivisionId)).forEach(division => {
-                    
+                memeberVotings.filter(i => allDivisions.find(division => division.DivisionId === i.PublishedDivision.DivisionId)).forEach(vote => {
+                        
                     allVotedForRelationships.push({
                         mpId: mp.id,
-                        divisionId: division.DivisionId,                                      
+                        divisionId: vote.PublishedDivision.DivisionId, 
+                        votedAye: vote.MemberVotedAye       
                     })
                 })
                 
-                divisionsVotedCount = votedForDivisions.length;                
+                divisionsVotedCount = memeberVotings.length;                
             }
             skip = 0;
         }
@@ -105,7 +102,6 @@ export const gatherStats = async () => {
             await createVotedForDivision(votedFor);                        
         }
     }
-
 
 
     console.log('END');

@@ -84,7 +84,10 @@ export const createDivisionNode = async (division: Division) => {
 
 export const createVotedForDivision = async (votedFor: VotedFor) => {
 
-    const cypher: string = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR]->(division);`;
+    console.log('check ', votedFor);
+    
+
+    const cypher: string = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}}]->(division);`;
 
     try {
         const session = driver.session();

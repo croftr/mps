@@ -84,7 +84,8 @@ const createDivisionNode = (division) => __awaiter(void 0, void 0, void 0, funct
 });
 exports.createDivisionNode = createDivisionNode;
 const createVotedForDivision = (votedFor) => __awaiter(void 0, void 0, void 0, function* () {
-    const cypher = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR]->(division);`;
+    console.log('check ', votedFor);
+    const cypher = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}}]->(division);`;
     try {
         const session = driver.session();
         console.log(cypher);

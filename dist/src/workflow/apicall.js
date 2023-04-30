@@ -12,13 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDivision = exports.getAllDivisions = exports.getMemebersDivisions = exports.getMps = void 0;
+exports.getDivision = exports.getAllDivisions = exports.getMemeberVoting = exports.getMemebersDivisions = exports.getMps = void 0;
 const node_fetch_1 = __importDefault(require("node-fetch"));
 const getMps = (skip, take) => __awaiter(void 0, void 0, void 0, function* () {
     let mpsResponse = [];
     try {
         const url = `https://members-api.parliament.uk/api/Members/Search?skip=${skip}&take=${take}&IsEligible=${true}&IsCurrentMember=${true}`;
-        console.log(url);
+        // console.log(url);
         const res = yield (0, node_fetch_1.default)(url);
         const response = yield res.json();
         const mps = response.items;
@@ -58,6 +58,14 @@ const getMemebersDivisions = (skip, take, memberId) => __awaiter(void 0, void 0,
     return divisions;
 });
 exports.getMemebersDivisions = getMemebersDivisions;
+const getMemeberVoting = (skip, take, memberId) => __awaiter(void 0, void 0, void 0, function* () {
+    const url = `https://commonsvotes-api.parliament.uk/data/divisions.json/membervoting?queryParameters.memberId=${memberId}&queryParameters.skip=${skip}&queryParameters.take=${take}`;
+    // console.log(url);  
+    const res = yield (0, node_fetch_1.default)(url);
+    const response = yield res.json();
+    return response;
+});
+exports.getMemeberVoting = getMemeberVoting;
 const getAllDivisions = (skip, take) => __awaiter(void 0, void 0, void 0, function* () {
     const res = yield (0, node_fetch_1.default)(`https://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.skip=${skip}&queryParameters.take=${take}`);
     const divisionResposne = yield res.json();

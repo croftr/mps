@@ -12,9 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.gatherStats = void 0;
 const apicall_1 = require("./apicall");
 const neoManager_1 = require("./neoManager");
-function delay(time) {
-    return new Promise(resolve => setTimeout(resolve, time));
-}
 const CREATE_MPS = true;
 const CREATE_DIVISIONS = true;
 const CREATE_RELATIONSHIPS = true;
@@ -65,23 +62,23 @@ const gatherStats = () => __awaiter(void 0, void 0, void 0, function* () {
     }
     skip = 0;
     if (CREATE_RELATIONSHIPS) {
-        // const mpsVotes = [];
         //make relationships between mps and divisions
         for (const mp of allMps) {
             let divisionsVotedCount = 25;
             console.log(`create RELEATIONSHIPS for MP ${mp.nameDisplayAs}`);
             while (divisionsVotedCount === 25) {
                 //for each mp get all the divisions they have voted on
-                const votedForDivision = yield (0, apicall_1.getMemebersDivisions)(skip, 25, mp.id);
+                const memeberVotings = yield (0, apicall_1.getMemeberVoting)(skip, 25, mp.id);
                 skip += 25;
                 //only create releationships for voted for divisions if we have created the division
-                votedForDivision.filter(i => allDivisions.find(division => division.DivisionId === i.DivisionId)).forEach(division => {
+                memeberVotings.filter(i => allDivisions.find(division => division.DivisionId === i.PublishedDivision.DivisionId)).forEach(vote => {
                     allVotedForRelationships.push({
                         mpId: mp.id,
-                        divisionId: division.DivisionId
+                        divisionId: vote.PublishedDivision.DivisionId,
+                        votedAye: vote.MemberVotedAye
                     });
                 });
-                divisionsVotedCount = votedForDivision.length;
+                divisionsVotedCount = memeberVotings.length;
             }
             skip = 0;
         }
