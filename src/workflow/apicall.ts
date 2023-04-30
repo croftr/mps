@@ -2,7 +2,7 @@
 import fetch from 'node-fetch';
 
 import { responseWrapper, responseValue, Mp } from '../models/mps';
-import { DivisionResposne, Division } from '../models/divisions';
+import { DivisionResposne, Division, MemberVoting } from '../models/divisions';
 
 export const getMps = async (skip: number, take: number): Promise<Array<Mp>> => {
 
@@ -10,7 +10,8 @@ export const getMps = async (skip: number, take: number): Promise<Array<Mp>> => 
   try {
 
     const url: string = `https://members-api.parliament.uk/api/Members/Search?skip=${skip}&take=${take}&IsEligible=${true}&IsCurrentMember=${true}`;
-
+    // console.log(url);
+    
     const res = await fetch(url);
   
     const response: responseWrapper = await res.json();     
@@ -31,7 +32,9 @@ export const getMps = async (skip: number, take: number): Promise<Array<Mp>> => 
 
 export const getMemebersDivisions = async (skip: number, take: number, memberId: number): Promise<Array<Division>> => {
 
-  const res = await fetch(`https://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.skip=${skip}&queryParameters.take=${take}&queryParameters.memberId=${memberId}`);
+  const url: string = `https://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.skip=${skip}&queryParameters.take=${take}&queryParameters.memberId=${memberId}`;
+  // console.log(url);  
+  const res = await fetch(url);
   
   const divisionResposne: Array<DivisionResposne> = await res.json();     
 
@@ -57,6 +60,18 @@ export const getMemebersDivisions = async (skip: number, take: number, memberId:
 
   
   return divisions;
+
+}
+
+export const getMemeberVoting = async (skip: number, take: number, memberId: number): Promise<Array<MemberVoting>> => {
+
+  const url: string = `https://commonsvotes-api.parliament.uk/data/divisions.json/membervoting?queryParameters.memberId=${memberId}&queryParameters.skip=${skip}&queryParameters.take=${take}`;
+  // console.log(url);  
+  const res = await fetch(url);
+  
+  const response: Array<MemberVoting> = await res.json();     
+
+  return response;
 
 }
 

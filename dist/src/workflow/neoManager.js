@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createDivisionNode = exports.createMpNode = exports.setupNeo = void 0;
+exports.createVotedForDivision = exports.createDivisionNode = exports.createMpNode = exports.setupNeo = void 0;
 const neo4j_driver_1 = __importDefault(require("neo4j-driver"));
 const CONNECTION_STRING = "bolt://localhost:7687";
 let driver;
@@ -60,7 +60,6 @@ const createMpNode = (mp) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.createMpNode = createMpNode;
 const createDivisionNode = (division) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('go');
     const cypher = `CREATE (division:Division {
         DivisionId: ${division.DivisionId},
         Date: "${division.Date}",
@@ -76,7 +75,6 @@ const createDivisionNode = (division) => __awaiter(void 0, void 0, void 0, funct
     try {
         const session = driver.session();
         const result = yield session.run(cypher);
-        console.log('created ', result);
     }
     catch (error) {
         if (error.code !== "Neo.ClientError.Schema.ConstraintValidationFailed") {
@@ -85,3 +83,17 @@ const createDivisionNode = (division) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.createDivisionNode = createDivisionNode;
+const createVotedForDivision = (votedFor) => __awaiter(void 0, void 0, void 0, function* () {
+    const cypher = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR]->(division);`;
+    try {
+        const session = driver.session();
+        console.log(cypher);
+        const result = yield session.run(cypher);
+    }
+    catch (error) {
+        if (error.code !== "Neo.ClientError.Schema.ConstraintValidationFailed") {
+            console.log('Error adding Club: ', error);
+        }
+    }
+});
+exports.createVotedForDivision = createVotedForDivision;

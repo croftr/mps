@@ -1,12 +1,17 @@
 import { log } from "console";
 import { getMps, getDivision, getMemebersDivisions, getAllDivisions } from "./apicall"
-import { createMpNode, createDivisionNode, setupNeo } from "./neoManager";
+import { createMpNode, createDivisionNode, setupNeo, createVotedForDivision } from "./neoManager";
 import { Mp } from "../models/mps";
 import { Division } from "../models/divisions";
+import { VotedFor } from "../models/relationships";
 
 function delay(time: number) {
     return new Promise(resolve => setTimeout(resolve, time));
 }
+
+const CREATE_MPS = true;
+const CREATE_DIVISIONS = true;
+const CREATE_RELATIONSHIPS = true;
 
 export const gatherStats = async () => {
 
@@ -14,69 +19,96 @@ export const gatherStats = async () => {
 
     const allMps: Array<Mp> = [];
     const allDivisions: Array<Division> = [];
+    const allVotedForRelationships: Array<VotedFor> = [];
 
-    const MAX_LOOPS = 800;
+    const MAX_LOOPS = 1;
 
-    let totalCount = 0;
     let skip = 0;
 
-    for (let i = 0; i < MAX_LOOPS; i++) {
-        skip = skip + 20;
+    let neoCreateCount = 0;
+
+    for (let i = 0; i < MAX_LOOPS; i++) {        
         const mps: Array<Mp> = await getMps(skip, 20);
+        skip += 25;
         allMps.push(...mps);
-        let fetchCount = mps.length;
         
-        totalCount = totalCount + fetchCount;
-        
-        if (fetchCount < 20) {
+        if (mps.length < 20) {
             break;
         }
     }
-    console.log(`Created ${totalCount} MPs in memory`);
+    console.log(`Created ${allMps.length} MPs in memory`);
 
-    await setupNeo();
+    if (CREATE_MPS) {
+        await setupNeo();
 
-    let neoCreateCount = 0;
-    allMps.forEach(i => {
-        createMpNode(i);
-        neoCreateCount = neoCreateCount + 1;
-    })
-    console.log(`Created ${neoCreateCount} MPs in Neo4j`);
+        for (let i of allMps) {
+            await createMpNode(i);
+            neoCreateCount = neoCreateCount + 1;
+        }
+        console.log(`Created ${neoCreateCount} MPs in Neo4j`);
+    }
 
     //create all the divisions 
-    totalCount = 0;
+    
     skip = 0;
     for (let i = 0; i < MAX_LOOPS; i++) {
-        skip = skip + 25;
+        skip += 25;
         const divisions: Array<Division> = await getAllDivisions(skip, 25);
         let fetchCount = divisions.length;
-        totalCount = totalCount + fetchCount;
+        
         allDivisions.push(...divisions)
 
         if (fetchCount < 25) {
             break;
         }
     }
-    console.log(`Created ${totalCount} divisions in memory`);
+    console.log(`Created ${allDivisions.length} divisions in memory`);
 
-    neoCreateCount = 0;
-    allDivisions.forEach(i => {
-        createDivisionNode(i);
-        neoCreateCount = neoCreateCount + 1;
-    })
-    console.log(`Created ${neoCreateCount} divisions in Neo4j`);
-
+    if (CREATE_DIVISIONS) {
+        neoCreateCount = 0;
+        for (let i of allDivisions) {
+            await createDivisionNode(i);
+            neoCreateCount = neoCreateCount + 1;
+        }
+        console.log(`Created ${neoCreateCount} divisions in Neo4j`);
+    }
     
+    skip = 0;
+    if (CREATE_RELATIONSHIPS) {
+        // const mpsVotes = [];
+        //make relationships between mps and divisions
+        for (const mp of allMps) {                        
+            let divisionsVotedCount: number = 25;
+
+            console.log(`create RELEATIONSHIPS for MP ${mp.nameDisplayAs}`);
+        
+            while (divisionsVotedCount === 25) {                
+                //for each mp get all the divisions they have voted on
+                const votedForDivisions: Array<Division> = await getMemebersDivisions(skip, 25, mp.id);                                
+                skip += 25;
+                
+                //only create releationships for voted for divisions if we have created the division
+                votedForDivisions.filter(i => allDivisions.find(division => division.DivisionId === i.DivisionId)).forEach(division => {
+                    
+                    allVotedForRelationships.push({
+                        mpId: mp.id,
+                        divisionId: division.DivisionId,                                      
+                    })
+                })
+                
+                divisionsVotedCount = votedForDivisions.length;                
+            }
+            skip = 0;
+        }
+
+        for (let votedFor of allVotedForRelationships) {  
+            await createVotedForDivision(votedFor);                        
+        }
+    }
 
 
-    //make relationships between mps and divisions
-    // for (const mp of allMps) {
 
-    //     const divisions: Array<Division> = await getMemebersDivisions(0, 25, mp.id);
-    //     console.log(`for MP ${mp.nameDisplayAs} got ${divisions.length} divisions`);
-
-    // }
-
+    console.log('END');
 
 
 }

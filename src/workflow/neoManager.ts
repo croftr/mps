@@ -1,6 +1,7 @@
 import { log } from 'console';
 import { Division } from '../models/divisions';
 import { responseWrapper, responseValue, Mp } from '../models/mps';
+import { VotedFor } from '../models/relationships';
 import neo4j from "neo4j-driver";
 
 const CONNECTION_STRING = "bolt://localhost:7687";
@@ -15,7 +16,7 @@ export const setupNeo = async () => {
         let result;
         result = await session.run(`MATCH (n) DELETE (n)`);
         result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
-        result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);        
+        result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
     } catch (error) {
         //contraint already exists so proceed
     }
@@ -55,7 +56,7 @@ export const createMpNode = async (mp: Mp) => {
 }
 
 export const createDivisionNode = async (division: Division) => {
-    
+
     const cypher: string = `CREATE (division:Division {
         DivisionId: ${division.DivisionId},
         Date: "${division.Date}",
@@ -68,10 +69,27 @@ export const createDivisionNode = async (division: Division) => {
         AyeCount: ${division.AyeCount},
         NoCount: ${division.NoCount}
         })`;
-        
+
     try {
         const session = driver.session();
-        const result = await session.run(cypher);        
+        const result = await session.run(cypher);
+
+    } catch (error: any) {
+        if (error.code !== "Neo.ClientError.Schema.ConstraintValidationFailed") {
+            console.log('Error adding Club: ', error);
+        }
+    }
+
+}
+
+export const createVotedForDivision = async (votedFor: VotedFor) => {
+
+    const cypher: string = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR]->(division);`;
+
+    try {
+        const session = driver.session();
+        console.log(cypher);            
+        const result = await session.run(cypher);
 
     } catch (error: any) {
         if (error.code !== "Neo.ClientError.Schema.ConstraintValidationFailed") {

@@ -18,6 +18,7 @@ const getMps = (skip, take) => __awaiter(void 0, void 0, void 0, function* () {
     let mpsResponse = [];
     try {
         const url = `https://members-api.parliament.uk/api/Members/Search?skip=${skip}&take=${take}&IsEligible=${true}&IsCurrentMember=${true}`;
+        console.log(url);
         const res = yield (0, node_fetch_1.default)(url);
         const response = yield res.json();
         const mps = response.items;
@@ -33,7 +34,9 @@ const getMps = (skip, take) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.getMps = getMps;
 const getMemebersDivisions = (skip, take, memberId) => __awaiter(void 0, void 0, void 0, function* () {
-    const res = yield (0, node_fetch_1.default)(`https://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.skip=${skip}&queryParameters.take=${take}&queryParameters.memberId=${memberId}`);
+    const url = `https://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.skip=${skip}&queryParameters.take=${take}&queryParameters.memberId=${memberId}`;
+    // console.log(url);  
+    const res = yield (0, node_fetch_1.default)(url);
     const divisionResposne = yield res.json();
     const divisions = [];
     divisionResposne.forEach(i => {
