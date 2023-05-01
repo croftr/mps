@@ -15,9 +15,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDivision = exports.getAllDivisions = exports.getMemeberVoting = exports.getMemebersDivisions = exports.getMps = void 0;
 const node_fetch_1 = __importDefault(require("node-fetch"));
 const getMps = (skip, take) => __awaiter(void 0, void 0, void 0, function* () {
+    const HOUSE_OF_COMMONS = 1;
     let mpsResponse = [];
     try {
-        const url = `https://members-api.parliament.uk/api/Members/Search?skip=${skip}&take=${take}&IsEligible=${true}&IsCurrentMember=${true}`;
+        const url = `https://members-api.parliament.uk/api/Members/Search?skip=${skip}&take=${take}&IsEligible=${true}&IsCurrentMember=${true}&House=${HOUSE_OF_COMMONS}`;
         // console.log(url);
         const res = yield (0, node_fetch_1.default)(url);
         const response = yield res.json();

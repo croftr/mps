@@ -17,9 +17,13 @@ export const setupNeo = async () => {
         result = await session.run(`MATCH (n) DELETE (n)`);
         result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
         result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
+        result = await session.run(`CREATE CONSTRAINT voted_for_unique ON (mp:Mp)-[:VOTED_FOR]->(division:Division) REQUIRE (mp.id <> division.id)`);
     } catch (error) {
         //contraint already exists so proceed
     }
+
+    console.log('NEO setup complete');
+    
 }
 
 export const createMpNode = async (mp: Mp) => {
@@ -33,13 +37,17 @@ export const createMpNode = async (mp: Mp) => {
         nameAddressAs: "${mp.nameAddressAs}",        
         partyId: "${mp.latestParty.id}",
         partyName: "${mp.latestParty.name}",
+        gender: "${mp.gender}",
         partyAbbreviation: "${mp.latestParty.abbreviation}",
         partyBackgroundColour: "${mp.latestParty.backgroundColour}",
         partyForegroundColour: "${mp.latestParty.foregroundColour}",
         partyIsLordsMainParty: "W${mp.latestParty.isLordsMainParty}",
         partyIsLordsSpiritualParty: "${mp.latestParty.isLordsSpiritualParty}",
         partyGovernmentType: "${mp.latestParty.governmentType}",
-        partyIsIndependentParty: "${mp.latestParty.isIndependentParty}"
+        partyIsIndependentParty: "${mp.latestParty.isIndependentParty}",
+        house: ${mp.latestHouseMembership.house},
+        membershipFrom: "${mp.latestHouseMembership.membershipFrom}",        
+        membershipStartDate: "${mp.latestHouseMembership.membershipStartDate}"
       });`
 
     try {
@@ -83,15 +91,12 @@ export const createDivisionNode = async (division: Division) => {
 }
 
 export const createVotedForDivision = async (votedFor: VotedFor) => {
-
-    console.log('check ', votedFor);
-    
-
+        
     const cypher: string = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}}]->(division);`;
 
     try {
         const session = driver.session();
-        console.log(cypher);            
+        // console.log(cypher);            
         const result = await session.run(cypher);
 
     } catch (error: any) {

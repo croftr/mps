@@ -24,10 +24,12 @@ const setupNeo = () => __awaiter(void 0, void 0, void 0, function* () {
         result = yield session.run(`MATCH (n) DELETE (n)`);
         result = yield session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
         result = yield session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
+        result = yield session.run(`CREATE CONSTRAINT voted_for_unique ON (mp:Mp)-[:VOTED_FOR]->(division:Division) REQUIRE (mp.id <> division.id)`);
     }
     catch (error) {
         //contraint already exists so proceed
     }
+    console.log('NEO setup complete');
 });
 exports.setupNeo = setupNeo;
 const createMpNode = (mp) => __awaiter(void 0, void 0, void 0, function* () {
@@ -39,13 +41,17 @@ const createMpNode = (mp) => __awaiter(void 0, void 0, void 0, function* () {
         nameAddressAs: "${mp.nameAddressAs}",        
         partyId: "${mp.latestParty.id}",
         partyName: "${mp.latestParty.name}",
+        gender: "${mp.gender}",
         partyAbbreviation: "${mp.latestParty.abbreviation}",
         partyBackgroundColour: "${mp.latestParty.backgroundColour}",
         partyForegroundColour: "${mp.latestParty.foregroundColour}",
         partyIsLordsMainParty: "W${mp.latestParty.isLordsMainParty}",
         partyIsLordsSpiritualParty: "${mp.latestParty.isLordsSpiritualParty}",
         partyGovernmentType: "${mp.latestParty.governmentType}",
-        partyIsIndependentParty: "${mp.latestParty.isIndependentParty}"
+        partyIsIndependentParty: "${mp.latestParty.isIndependentParty}",
+        house: ${mp.latestHouseMembership.house},
+        membershipFrom: "${mp.latestHouseMembership.membershipFrom}",        
+        membershipStartDate: "${mp.latestHouseMembership.membershipStartDate}"
       });`;
     try {
         const session = driver.session();
@@ -84,11 +90,10 @@ const createDivisionNode = (division) => __awaiter(void 0, void 0, void 0, funct
 });
 exports.createDivisionNode = createDivisionNode;
 const createVotedForDivision = (votedFor) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('check ', votedFor);
     const cypher = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}}]->(division);`;
     try {
         const session = driver.session();
-        console.log(cypher);
+        // console.log(cypher);            
         const result = yield session.run(cypher);
     }
     catch (error) {
