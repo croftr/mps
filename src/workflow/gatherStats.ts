@@ -1,6 +1,6 @@
 import { log } from "console";
 import { getMps, getDivision, getMemebersDivisions, getAllDivisions, getMemeberVoting } from "./apicall"
-import { createMpNode, createDivisionNode, setupNeo, createVotedForDivision } from "./neoManager";
+import { createMpNode, createDivisionNode, setupNeo, createVotedForDivision, cleanUp, setupDataScience } from "./neoManager";
 import { Mp } from "../models/mps";
 import { Division, MemberVoting } from "../models/divisions";
 import { VotedFor } from "../models/relationships";
@@ -11,38 +11,18 @@ const CREATE_RELATIONSHIPS = true;
 
 export const gatherStats = async () => {
 
-    console.log('BEGIN');
+    console.log(`Creating ${Number(process.env.MP_LOOPS) * Number(process.env.MP_TAKE_PER_LOOP)} Mps`);
+
+    await setupNeo();
 
     const allMps: Array<Mp> = [];
     const allDivisions: Array<Division> = [];
     const allVotedForRelationships: Array<VotedFor> = [];
 
     const MAX_LOOPS = 200;
-
     let skip = 0;
 
     let neoCreateCount = 0;
-
-    for (let i = 0; i < MAX_LOOPS; i++) {
-        const mps: Array<Mp> = await getMps(skip, 1);
-        skip += 25;
-        allMps.push(...mps);
-
-        if (mps.length < 20) {
-            break;
-        }
-    }
-    console.log(`Created ${allMps.length} MPs in memory`);
-
-    if (CREATE_MPS) {
-        await setupNeo();
-
-        for (let i of allMps) {
-            await createMpNode(i);
-            neoCreateCount = neoCreateCount + 1;
-        }
-        console.log(`Created ${neoCreateCount} MPs in Neo4j`);
-    }
 
     //create all the divisions 
     if (CREATE_DIVISIONS) {
@@ -60,14 +40,38 @@ export const gatherStats = async () => {
         }
         console.log(`Created ${allDivisions.length} divisions in memory`);
 
-        if (CREATE_DIVISIONS) {
-            neoCreateCount = 0;
-            for (let i of allDivisions) {
-                await createDivisionNode(i);
-                neoCreateCount = neoCreateCount + 1;
-            }
-            console.log(`Created ${neoCreateCount} divisions in Neo4j`);
+        neoCreateCount = 0;
+        for (let i of allDivisions) {
+            await createDivisionNode(i);
+            neoCreateCount = neoCreateCount + 1;
         }
+        console.log(`Created ${neoCreateCount} divisions in Neo4j`);
+
+    }
+
+    skip = 0;
+    neoCreateCount = 0;
+    if (CREATE_MPS) {        
+        
+        for (let i = 0; i < Number(process.env.MP_LOOPS); i++) {
+            
+            const mps: Array<Mp> = await getMps(skip, Number(process.env.MP_TAKE_PER_LOOP));
+            
+            skip += 25;
+            allMps.push(...mps);
+
+            if (mps.length < 20) {
+                break;
+            }
+        }
+        console.log(`Created ${allMps.length} MPs in memory`);
+
+
+        for (let i of allMps) {
+            await createMpNode(i);
+            neoCreateCount = neoCreateCount + 1;
+        }
+        console.log(`Created ${neoCreateCount} MPs in Neo4j`);
     }
 
     skip = 0;
@@ -91,9 +95,9 @@ export const gatherStats = async () => {
                 //only create releationships for voted for divisions if we have created the division
                 let filterVoteCount = 0;
 
-                memeberVotings.filter(i => {                    
+                memeberVotings.filter(i => {
                     return allDivisions.find(division => division.DivisionId === i.PublishedDivision.DivisionId)
-                }).forEach(vote => {                    
+                }).forEach(vote => {
                     allVotedForRelationships.push({
                         mpId: mp.id,
                         divisionId: vote.PublishedDivision.DivisionId,
@@ -118,6 +122,9 @@ export const gatherStats = async () => {
         }
     }
 
+    await setupDataScience();
+
+    cleanUp();
 
     console.log('END');
 

@@ -16,30 +16,14 @@ const CREATE_MPS = true;
 const CREATE_DIVISIONS = true;
 const CREATE_RELATIONSHIPS = true;
 const gatherStats = () => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('BEGIN');
+    console.log(`Creating ${Number(process.env.MP_LOOPS) * Number(process.env.MP_TAKE_PER_LOOP)} Mps`);
+    yield (0, neoManager_1.setupNeo)();
     const allMps = [];
     const allDivisions = [];
     const allVotedForRelationships = [];
-    const MAX_LOOPS = 100;
+    const MAX_LOOPS = 200;
     let skip = 0;
     let neoCreateCount = 0;
-    for (let i = 0; i < 1; i++) {
-        const mps = yield (0, apicall_1.getMps)(skip, 1);
-        skip += 25;
-        allMps.push(...mps);
-        if (mps.length < 20) {
-            break;
-        }
-    }
-    console.log(`Created ${allMps.length} MPs in memory`);
-    if (CREATE_MPS) {
-        yield (0, neoManager_1.setupNeo)();
-        for (let i of allMps) {
-            yield (0, neoManager_1.createMpNode)(i);
-            neoCreateCount = neoCreateCount + 1;
-        }
-        console.log(`Created ${neoCreateCount} MPs in Neo4j`);
-    }
     //create all the divisions 
     if (CREATE_DIVISIONS) {
         skip = 0;
@@ -53,14 +37,30 @@ const gatherStats = () => __awaiter(void 0, void 0, void 0, function* () {
             }
         }
         console.log(`Created ${allDivisions.length} divisions in memory`);
-        if (CREATE_DIVISIONS) {
-            neoCreateCount = 0;
-            for (let i of allDivisions) {
-                yield (0, neoManager_1.createDivisionNode)(i);
-                neoCreateCount = neoCreateCount + 1;
-            }
-            console.log(`Created ${neoCreateCount} divisions in Neo4j`);
+        neoCreateCount = 0;
+        for (let i of allDivisions) {
+            yield (0, neoManager_1.createDivisionNode)(i);
+            neoCreateCount = neoCreateCount + 1;
         }
+        console.log(`Created ${neoCreateCount} divisions in Neo4j`);
+    }
+    skip = 0;
+    neoCreateCount = 0;
+    if (CREATE_MPS) {
+        for (let i = 0; i < Number(process.env.MP_LOOPS); i++) {
+            const mps = yield (0, apicall_1.getMps)(skip, Number(process.env.MP_TAKE_PER_LOOP));
+            skip += 25;
+            allMps.push(...mps);
+            if (mps.length < 20) {
+                break;
+            }
+        }
+        console.log(`Created ${allMps.length} MPs in memory`);
+        for (let i of allMps) {
+            yield (0, neoManager_1.createMpNode)(i);
+            neoCreateCount = neoCreateCount + 1;
+        }
+        console.log(`Created ${neoCreateCount} MPs in Neo4j`);
     }
     skip = 0;
     if (CREATE_RELATIONSHIPS) {
@@ -79,10 +79,8 @@ const gatherStats = () => __awaiter(void 0, void 0, void 0, function* () {
                 //only create releationships for voted for divisions if we have created the division
                 let filterVoteCount = 0;
                 memeberVotings.filter(i => {
-                    console.log('CHECK vote >> ', i.PublishedDivision.DivisionId, i.PublishedDivision.Title);
                     return allDivisions.find(division => division.DivisionId === i.PublishedDivision.DivisionId);
                 }).forEach(vote => {
-                    console.log('add vote >> ', vote.PublishedDivision.Title);
                     allVotedForRelationships.push({
                         mpId: mp.id,
                         divisionId: vote.PublishedDivision.DivisionId,
@@ -91,8 +89,6 @@ const gatherStats = () => __awaiter(void 0, void 0, void 0, function* () {
                     filterVoteCount += 1;
                 });
                 divisionsVotedCount = memeberVotings.length;
-                console.log('add ', filterVoteCount);
-                console.log('to ', mpVoteCount);
                 mpVoteCount = mpVoteCount + filterVoteCount;
             }
             console.log(`created ${mpVoteCount} RELEATIONSHIPS for MP #${index} ${mp.nameDisplayAs}`);
@@ -104,6 +100,8 @@ const gatherStats = () => __awaiter(void 0, void 0, void 0, function* () {
             yield (0, neoManager_1.createVotedForDivision)(votedFor);
         }
     }
+    yield (0, neoManager_1.setupDataScience)();
+    (0, neoManager_1.cleanUp)();
     console.log('END');
 });
 exports.gatherStats = gatherStats;

@@ -4,26 +4,62 @@ import { responseWrapper, responseValue, Mp } from '../models/mps';
 import { VotedFor } from '../models/relationships';
 import neo4j from "neo4j-driver";
 
-const CONNECTION_STRING = "bolt://localhost:7687";
-
+let CONNECTION_STRING = `bolt://${process.env.DOCKER_HOST}:7687`;
 let driver: any;
+
+const runCypher = async (cypher: string, session: any) => {
+    console.log(cypher);
+    try {
+        const result = await session.run(cypher);
+        return result;
+    } catch (error) {
+
+    }
+}
+
 export const setupNeo = async () => {
+
+    CONNECTION_STRING = `bolt://${process.env.DOCKER_HOST}:7687`;
+
+    driver = neo4j.driver(CONNECTION_STRING, neo4j.auth.basic(process.env.NEO4J_USER || '', process.env.NEO4J_PASSWORD || ''));
+    const session = driver.session();
+
+    console.log('NEO URL ', CONNECTION_STRING, process.env.NEO4J_USER, process.env.NEO4J_PASSWORD);
+
+    try {
+        let result;
+        result = await runCypher(`MATCH (n) DETACH DELETE n`, session);
+        result = await runCypher(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`, session);
+        result = await runCypher(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`, session);
+        result = await runCypher(`CREATE CONSTRAINT voted_for_unique ON (mp:Mp)-[:VOTED_FOR]->(division:Division) REQUIRE (mp.id <> division.id)`, session);
+    } catch (error) {
+        //contraint already exists so proceed
+    }
+    session.close();
+    console.log('NEO setup complete');
+
+}
+
+export const setupDataScience = async () => {
+
+    CONNECTION_STRING = `bolt://${process.env.DOCKER_HOST}:7687`;
 
     driver = neo4j.driver(CONNECTION_STRING, neo4j.auth.basic(process.env.NEO4J_USER || '', process.env.NEO4J_PASSWORD || ''));
     const session = driver.session();
 
     try {
-        let result;
-        result = await session.run(`MATCH (n) DELETE (n)`);
-        result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
-        result = await session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
-        result = await session.run(`CREATE CONSTRAINT voted_for_unique ON (mp:Mp)-[:VOTED_FOR]->(division:Division) REQUIRE (mp.id <> division.id)`);
+        await runCypher(`CALL gds.graph.drop('g1',false) YIELD graphName`, session);
+        await runCypher(`CALL gds.graph.project('g1', ['Mp', 'Division'], ['VOTED_FOR'],  { relationshipProperties: ['votedAyeNumeric'] })`, session);
     } catch (error) {
         //contraint already exists so proceed
     }
 
-    console.log('NEO setup complete');
-    
+    session.close();
+
+}
+
+export const cleanUp = () => {
+    driver.close();
 }
 
 export const createMpNode = async (mp: Mp) => {
@@ -91,8 +127,8 @@ export const createDivisionNode = async (division: Division) => {
 }
 
 export const createVotedForDivision = async (votedFor: VotedFor) => {
-        
-    const cypher: string = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}}]->(division);`;
+
+    const cypher: string = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}, votedAyeNumeric: ${Number(votedFor.votedAye)} }]->(division);`;
 
     try {
         const session = driver.session();

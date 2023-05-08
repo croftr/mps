@@ -12,26 +12,56 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createVotedForDivision = exports.createDivisionNode = exports.createMpNode = exports.setupNeo = void 0;
+exports.createVotedForDivision = exports.createDivisionNode = exports.createMpNode = exports.cleanUp = exports.setupDataScience = exports.setupNeo = void 0;
 const neo4j_driver_1 = __importDefault(require("neo4j-driver"));
-const CONNECTION_STRING = "bolt://localhost:7687";
+let CONNECTION_STRING = `bolt://${process.env.DOCKER_HOST}:7687`;
 let driver;
+const runCypher = (cypher, session) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(cypher);
+    try {
+        const result = yield session.run(cypher);
+        return result;
+    }
+    catch (error) {
+    }
+});
 const setupNeo = () => __awaiter(void 0, void 0, void 0, function* () {
+    CONNECTION_STRING = `bolt://${process.env.DOCKER_HOST}:7687`;
     driver = neo4j_driver_1.default.driver(CONNECTION_STRING, neo4j_driver_1.default.auth.basic(process.env.NEO4J_USER || '', process.env.NEO4J_PASSWORD || ''));
     const session = driver.session();
+    console.log('NEO URL ', CONNECTION_STRING, process.env.NEO4J_USER, process.env.NEO4J_PASSWORD);
     try {
         let result;
-        result = yield session.run(`MATCH (n) DELETE (n)`);
-        result = yield session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
-        result = yield session.run(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`);
-        result = yield session.run(`CREATE CONSTRAINT voted_for_unique ON (mp:Mp)-[:VOTED_FOR]->(division:Division) REQUIRE (mp.id <> division.id)`);
+        result = yield runCypher(`MATCH (n) DETACH DELETE n`, session);
+        result = yield runCypher(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`, session);
+        result = yield runCypher(`CREATE CONSTRAINT FOR (mp:Mp) REQUIRE mp.id IS UNIQUE`, session);
+        result = yield runCypher(`CREATE CONSTRAINT voted_for_unique ON (mp:Mp)-[:VOTED_FOR]->(division:Division) REQUIRE (mp.id <> division.id)`, session);
     }
     catch (error) {
         //contraint already exists so proceed
     }
+    session.close();
     console.log('NEO setup complete');
 });
 exports.setupNeo = setupNeo;
+const setupDataScience = () => __awaiter(void 0, void 0, void 0, function* () {
+    CONNECTION_STRING = `bolt://${process.env.DOCKER_HOST}:7687`;
+    driver = neo4j_driver_1.default.driver(CONNECTION_STRING, neo4j_driver_1.default.auth.basic(process.env.NEO4J_USER || '', process.env.NEO4J_PASSWORD || ''));
+    const session = driver.session();
+    try {
+        yield runCypher(`CALL gds.graph.drop('g1',false) YIELD graphName`, session);
+        yield runCypher(`CALL gds.graph.project('g1', ['Mp', 'Division'], ['VOTED_FOR'],  { relationshipProperties: ['votedAyeNumeric'] })`, session);
+    }
+    catch (error) {
+        //contraint already exists so proceed
+    }
+    session.close();
+});
+exports.setupDataScience = setupDataScience;
+const cleanUp = () => {
+    driver.close();
+};
+exports.cleanUp = cleanUp;
 const createMpNode = (mp) => __awaiter(void 0, void 0, void 0, function* () {
     const cypher = `CREATE (mp:Mp {
         id: ${mp.id},
@@ -90,7 +120,7 @@ const createDivisionNode = (division) => __awaiter(void 0, void 0, void 0, funct
 });
 exports.createDivisionNode = createDivisionNode;
 const createVotedForDivision = (votedFor) => __awaiter(void 0, void 0, void 0, function* () {
-    const cypher = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}}]->(division);`;
+    const cypher = `MATCH (mp:Mp {id: ${votedFor.mpId}}), (division:Division {DivisionId: ${votedFor.divisionId}}) CREATE (mp)-[:VOTED_FOR {votedAye: ${votedFor.votedAye}, votedAyeNumeric: ${Number(votedFor.votedAye)} }]->(division);`;
     try {
         const session = driver.session();
         // console.log(cypher);            
